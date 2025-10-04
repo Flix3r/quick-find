@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "App Config",
+  "type": "object",
+  "definitions": {
+    "commandString": {
+      "type": "string"
+    }
+  },
+  "properties": {
+    "global": {
+      "type": "object",
+      "properties": {
+        "allowed_chars": { "type": "string", "default": "" },
+        "match_allowed_chars_case": { "type": "boolean", "default": false },
+        "allowed_regex": { "type": "string", "default": "[a-z0-9]" },
+        "match_selection_case": { "type": "boolean", "default": false },
+        "minimize_keys": { "type": "boolean", "default": false },
+        "remove_extension": { "type": "boolean", "default": false }
+      }
+    },
+    "menus": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "hotkey": {
+            "type": "string",
+            "description": "A case-insensitive hotkey string consisting of optional modifiers and a key.\nValid modifiers can be found at https://github.com/tauri-apps/global-hotkey/blob/dev/src/hotkey.rs#L198 \nValid keys can be found at https://github.com/tauri-apps/global-hotkey/blob/dev/src/hotkey.rs#L236-L352",
+            "examples": [
+              "KeyX",
+              "Ctrl+KeyX",
+              "Shift+KeyC",
+              "Super+Ctrl+Shift+Alt+ArrowUp",
+              "Digit5",
+              "KeyG",
+              "Shift+F12",
+              "CmdOrCtrl+Space"
+            ]
+          },
+          "action": {
+            "type": "string",
+            "enum": ["open", "command"]
+          },
+          "directory": { "type": "string" },
+          "entries": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                { "type": "string" },
+                {
+                  "type": "object",
+                  "properties": {
+                    "value": { "type": "string" },
+                    "command": { "$ref": "#/definitions/commandString" }
+                  },
+                  "required": ["command"]
+                }
+              ]
+            }
+          },
+          "command": { "$ref": "#/definitions/commandString" },
+          "global_overrides": { "$ref": "#/properties/global" }
+        },
+        "required": ["hotkey", "action"],
+        "anyOf": [
+          { "required": ["directory"] },
+          { "required": ["entries"] }
+        ],
+        "oneOf": [
+          { "properties": { "action": { "const": "open" } } },
+          { "properties": { "action": { "const": "command" } } }
+        ],
+        "if": {
+          "required": ["directory"],
+          "properties": {
+            "action": { "const": "command" }
+          }
+        },
+        "then": {
+          "required": ["command"]
+        },
+        "else": {
+          "not": {
+            "required": ["command"]
+          }
+        }
+      },
+      "minItems": 1
+    }
+  },
+  "required": ["menus"]
+}
