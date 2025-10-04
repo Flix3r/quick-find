@@ -33,24 +33,9 @@ body::-webkit-scrollbar {
   font-weight: lighter;
 }
 
-#settings {
-  display: none;
-  flex-direction: column;
-  opacity: 0;
-  width: 100%;
-  height: 100%;
-  left: 0;
-  top: 0;
-}
-
 em {
   text-decoration: underline;
   font-weight: bold;
-}
-
-#settings-area {
-  display: flex;
-  /* height: 100%; */
 }
 
 #topbar {
