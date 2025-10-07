@@ -1,7 +1,9 @@
-# Tauri + Vanilla TS
+# Quick Find
+An app to quickly select a file or string to open or run a command with.
+![Screenshot](https://github.com/Flix3r/quick-find/blob/main/screenshot.png)
 
-This template should help get you started developing with Tauri in vanilla HTML, CSS and Typescript.
+## Configuration
+The app is configured using JSON. The config file will be created and opened on first launch. It is reloaded automatically, as long as the config is valid. A JSON schema is available [here](https://github.com/Flix3r/quick-find/blob/main/src-tauri/config.schema.json), as such an editor that supports it, such as [VS Code](https://code.visualstudio.com/), is recommended.
 
-## Recommended IDE Setup
-
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+## Credits
+This app was inspired by [passivestar](https://github.com/passivestar)'s [quickmenu](https://github.com/passivestar/quickmenu).
