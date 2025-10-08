@@ -30,6 +30,8 @@ pub struct Global {
     pub remove_extension: bool,
     #[serde(default)]
     pub custom_css: Option<String>,
+    #[serde(default)]
+    pub ignored_files: Vec<String>,
 }
 
 
@@ -49,10 +51,20 @@ pub struct GlobalOverrides {
     pub remove_extension: Option<bool>,
     #[serde(default)]
     pub custom_css: Option<String>,
+    #[serde(default = "default_ignored_files")]
+    pub ignored_files: Vec<String>,
 }
 
 fn default_allowed_regex() -> String {
     "[A-z0-9]".to_string()
+}
+
+fn default_ignored_files() -> Vec<String> {
+    vec![
+        ".DS_Store".to_string(), 
+        "thumbs.db".to_string(), 
+        "desktop.ini".to_string()
+    ]
 }
 
 #[derive(Debug, Deserialize)]
@@ -168,6 +180,9 @@ fn generate_menus(app: &AppHandle, mut menus: MutexGuard<Vec<crate::Menu>>, conf
                 minimize_keys: g.minimize_keys.unwrap_or(config.global.minimize_keys),
                 remove_extension: g.remove_extension.unwrap_or(config.global.remove_extension),
                 custom_css: g.custom_css.clone().or_else(|| config.global.custom_css.clone()),
+                ignored_files: config.global.ignored_files
+                    .iter().chain(g.ignored_files.iter())
+                    .cloned().collect(),
             },
             None => &config.global,
         };
@@ -222,7 +237,8 @@ fn generate_menus(app: &AppHandle, mut menus: MutexGuard<Vec<crate::Menu>>, conf
             settings.minimize_keys,
             settings.remove_extension,
             menu.command,
-            settings.custom_css.clone()
+            settings.custom_css.clone(),
+            settings.ignored_files.clone()
         ));
 
         app.global_shortcut().register(shortcut)

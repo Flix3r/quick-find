@@ -15,8 +15,16 @@
         "match_allowed_chars_case": { "type": "boolean", "default": false },
         "allowed_regex": { "type": "string", "default": "[A-z0-9]" },
         "match_selection_case": { "type": "boolean", "default": false },
-        "minimize_keys": { "type": "boolean", "default": false },
-        "remove_extension": { "type": "boolean", "default": false },
+        "minimize_keys": { 
+          "type": "boolean", 
+          "default": false,
+          "description": "May make some key sequences unintuitive. Changing one entry may change many sequences."
+        },
+        "remove_extension": { 
+          "type": "boolean", 
+          "default": false, 
+          "description": "Only affects the displayed text." 
+        },
         "custom_css": { 
           "type": "string", 
           "default": "",
@@ -27,6 +35,12 @@
             ".current { color: blue; }",
             ".pre, .post { color: gray; }"
           ]
+        },
+        "ignored_files": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [".DS_Store", "thumbs.db, desktop.ini"],
+          "description": "List of filenames to ignore in a directory."
         }
       }
     },

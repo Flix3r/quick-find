@@ -19,6 +19,7 @@ pub struct Menu {
     remove_extension: bool,
     command: Option<String>,
     custom_css: Option<String>,
+    ignored_files: Vec<String>,
 }
 
 impl Menu {
@@ -34,7 +35,8 @@ impl Menu {
         minimize_keys: bool,
         remove_extension: bool,
         command: Option<String>,
-        custom_css: Option<String>
+        custom_css: Option<String>,
+        ignored_files: Vec<String>
     ) -> Self {
         Menu {
             shortcut,
@@ -49,7 +51,8 @@ impl Menu {
             remove_extension,
             current_entries: Vec::new(),
             command,
-            custom_css
+            custom_css,
+            ignored_files
         }
     }
 
@@ -59,11 +62,19 @@ impl Menu {
                 match read_dir(&dir) {
                     Ok(dir) => dir
                         .filter_map(|res| res.ok())
-                        .map(|entry| {
+                        .filter_map(|entry| {
                             let mut name = entry.file_name().to_string_lossy().into_owned();
-                            if entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+                            let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
+
+                            if is_dir {
                                 name.push('/');
-                            } else if self.remove_extension {
+                            } 
+
+                            if self.ignored_files.contains(&name) {
+                                return None;
+                            }
+
+                            if !is_dir && self.remove_extension {
                                 name = Path::new(&name).file_stem()
                                     .and_then(|s| s.to_str())
                                     .unwrap_or(&name).to_string();
@@ -72,8 +83,8 @@ impl Menu {
                             let full = entry.path().to_string_lossy().into_owned();
 
                             match &self.action {
-                                Action::Open => Entry::new(name, full, ActionType::Open),
-                                Action::Command => Entry::new(name, full, ActionType::Command(self.command.clone().unwrap()))
+                                Action::Open => Some(Entry::new(name, full, ActionType::Open)),
+                                Action::Command => Some(Entry::new(name, full, ActionType::Command(self.command.clone().unwrap())))
                             }
                         }).collect(),
                     Err(_) => {
