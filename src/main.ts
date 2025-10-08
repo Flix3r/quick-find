@@ -1,6 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from "@tauri-apps/api/event";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 
 const entrySize = 19; // Needs to be odd
 const entryClipText = "...";
@@ -16,16 +15,18 @@ type Entry = {
 listen('opened', (event) => {
     let entries = event.payload as Entry[];
     let entriesElement = document.getElementById("entries")!;
-    // entriesElement.style.width = windowSize.width + "px";
     entriesElement.innerHTML = "";
 
     console.log(entries);
 
     for (const entry of entries) {
         let entryDiv = document.createElement("div");
+        entryDiv.className = "entry";
 
         if (entry.selection_index > 0) {
             let preText = document.createElement("span");
+            preText.className = "pre";
+
             let start = Math.max(0, Math.min(
                 entry.selection_index - halfSize, 
                 entry.string.length - entrySize + entryClipText.length
@@ -39,11 +40,15 @@ listen('opened', (event) => {
         }
         
         let entryLetter = document.createElement("em");
+        entryLetter.className = "current";
+
         entryLetter.innerText = entry.string[entry.selection_index];
         entryDiv.appendChild(entryLetter);
         
         if (entry.string.length >= entry.selection_index) {
             let postText = document.createElement("span");
+            postText.className = "post";
+
             let end = Math.min(entry.string.length, Math.max(
                 entry.selection_index + halfSize + 1,
                 entrySize - entryClipText.length
@@ -61,12 +66,20 @@ listen('opened', (event) => {
 
         entriesElement.appendChild(entryDiv);
     }
-})
+});
 
+listen('custom-css', (event) => {
+    document.getElementById('custom-css')!.innerHTML = event.payload as string;
+});
 
 window.addEventListener("keydown", (event) => {
     if (event.key == "Escape") {
-        getCurrentWindow().hide();
+        invoke('close');
+        return;
+    }
+
+    if (event.ctrlKey && event.key == ".") {
+        invoke('open_config');
         return;
     }
 

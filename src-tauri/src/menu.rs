@@ -17,7 +17,8 @@ pub struct Menu {
     match_selection_case: bool,
     minimize_keys: bool,
     remove_extension: bool,
-    command: Option<String>
+    command: Option<String>,
+    custom_css: Option<String>,
 }
 
 impl Menu {
@@ -32,7 +33,8 @@ impl Menu {
         match_selection_case: bool,
         minimize_keys: bool,
         remove_extension: bool,
-        command: Option<String>
+        command: Option<String>,
+        custom_css: Option<String>
     ) -> Self {
         Menu {
             shortcut,
@@ -46,7 +48,8 @@ impl Menu {
             minimize_keys,
             remove_extension,
             current_entries: Vec::new(),
-            command
+            command,
+            custom_css
         }
     }
 
@@ -85,6 +88,12 @@ impl Menu {
         
         self.find_entry_selections();
     }
+
+    pub fn emit_css(&self, app: &AppHandle) {
+        if let Some(css) = &self.custom_css {
+            app.emit("custom-css", css).unwrap();
+        }
+    }
     
     fn find_entry_selections(&mut self) {
         if self.minimize_keys {
@@ -114,11 +123,6 @@ impl Menu {
                             self.match_selection_case
                         );
                     }
-                    
-                    println!(
-                        "Got {} selection of entry {} with disallowed chars \"{}\"", 
-                        entry.selection_letter, entry.string, disallowed_chars
-                    );
                 };
 
                 let not_same = self.current_entries.iter().any(|x| {
@@ -141,11 +145,6 @@ impl Menu {
                     "",
                     self.match_allowed_chars_case,
                     self.match_selection_case
-                );
-
-                println!(
-                    "Got {} selection of entry {}", 
-                    entry.selection_letter, entry.string
                 );
             }
         }
@@ -182,15 +181,14 @@ impl Menu {
 
         if self.current_entries.len() == 1 {
             let entry = &self.current_entries[0];
-            println!("Filtered to 1 entry: {}", entry.string);
+            println!("Activating entry: {}", entry.string);
 
             self.current_entries[0].action.activate(
                 app, 
                 &entry.full_string
             );
 
-            app.get_window("main").expect("Could not get window")
-                .hide().expect("Could not hide window");
+            close(app.clone());
             return false
         }
 
@@ -208,7 +206,7 @@ impl Menu {
 
 #[tauri::command]
 pub fn filter_entries(
-    app: tauri::AppHandle, 
+    app: AppHandle, 
     state_idx: State<'_, Mutex<usize>>, 
     state: State<'_, Mutex<Vec<Menu>>>, 
     in_char: char
@@ -220,4 +218,11 @@ pub fn filter_entries(
     menu.filter(in_char, &app);
     app.emit("opened", &menu.current_entries)
         .expect("Could not emit filtered entries");
+}
+
+#[tauri::command]
+pub fn close(app: AppHandle) {
+    app.get_window("main").expect("Could not get window")
+        .hide().expect("Could not hide window");
+    *app.state::<Mutex<usize>>().lock().unwrap() = usize::MAX;
 }

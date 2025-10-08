@@ -41,9 +41,10 @@ fn open(app: &AppHandle, menu: &mut Menu) {
 
     window.set_focus().expect("Could not focus window");
     webview.set_focus().expect("Could not focus webview");
+    menu.emit_css(app);
     menu.get_entries();
     window.emit("opened", &menu.current_entries).expect("Could not emit initial entries");
- }
+}
 
 fn main() {
     tauri::Builder::default()
@@ -58,7 +59,7 @@ fn main() {
                 .build(app)?;
 
             app.manage(Mutex::new(Vec::<Menu>::new()));
-            app.manage(Mutex::new(0 as usize));
+            app.manage(Mutex::new(usize::MAX));
 
             app.handle().plugin(
                 tauri_plugin_global_shortcut::Builder::new()
@@ -76,12 +77,16 @@ fn main() {
                     .build(),
             )?;
 
-            config::ensure_exists(app);
-            config::start_listening(app.handle().clone());
+            config::ensure_exists(app.handle());
+            config::start_listening(app.handle());
             
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![menu::filter_entries])
+        .invoke_handler(tauri::generate_handler![
+            menu::close,
+            menu::filter_entries,
+            config::open_config,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

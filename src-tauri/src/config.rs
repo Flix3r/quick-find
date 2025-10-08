@@ -5,7 +5,7 @@ use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 use tauri_plugin_opener::OpenerExt;
 use std::{path::PathBuf, str::FromStr, sync::{Mutex, MutexGuard, mpsc::channel}, time::Duration};
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
-use crate::entry::ActionType;
+use crate::{entry::ActionType, menu};
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
@@ -28,6 +28,8 @@ pub struct Global {
     pub minimize_keys: bool,
     #[serde(default)]
     pub remove_extension: bool,
+    #[serde(default)]
+    pub custom_css: Option<String>,
 }
 
 
@@ -45,6 +47,8 @@ pub struct GlobalOverrides {
     pub minimize_keys: Option<bool>,
     #[serde(default)]
     pub remove_extension: Option<bool>,
+    #[serde(default)]
+    pub custom_css: Option<String>,
 }
 
 fn default_allowed_regex() -> String {
@@ -79,7 +83,22 @@ pub struct Menu {
     pub global_overrides: Option<GlobalOverrides>,
 }
 
-pub fn ensure_exists(app: &tauri::App) {
+#[tauri::command]
+pub fn open_config(app: AppHandle) {
+    let path = app.path().config_dir()
+        .expect("Could not get config directory")
+        .join("quick-find")
+        .join("config.json");
+
+    if app.opener().open_path(
+        path.to_string_lossy(), 
+        None::<&str>
+    ).is_err() {
+        println!("Could not open config");
+    }
+}
+
+pub fn ensure_exists(app: &AppHandle) {
     let config_dir = app.path().config_dir()
         .expect("Could not get config directory")
         .join("quick-find");
@@ -94,8 +113,18 @@ pub fn ensure_exists(app: &tauri::App) {
 
     if !config_path.exists() {
         println!("Creating default config file");
-        std::fs::write(&config_path, "{\n  \"$schema\": \"\",\n  \n}")
-            .expect("Could not create default config file");
+        std::fs::write(&config_path, concat!(
+            "{\n",  
+            "  \"$schema\": \"https://raw.githubusercontent.com/Flix3r/quick-find/refs/heads/main/src-tauri/config.schema.json\",\n",
+            "  \"menus\": [\n",
+            "    {\n",
+            "      \"hotkey\": \"Ctrl+Space\",\n",
+            "      \"action\": \"open\",\n",
+            "      \"directory\": \"absolute/path/to/directory/\",\n",
+            "    }\n",
+            "  ]\n",
+            "}"
+        )).expect("Could not create default config file");
         app.opener().open_path(config_path.to_string_lossy(), None::<&str>)
             .expect("Could not open config");
     }
@@ -108,15 +137,15 @@ fn load(config_dir: &PathBuf) -> Result<Config, serde_json::Error> {
     );
 
     match &result {
-        Ok(_) => println!("Loaded config successfully"),
+        Ok(_) => println!("Config loaded"),
         Err(_) => println!("Config invalid")
     }
 
     result
 }
 
-fn generate_menus(app_handle: &AppHandle, mut menus: MutexGuard<Vec<crate::Menu>>, config: Config) {
-    let global_shortcut = app_handle.global_shortcut();
+fn generate_menus(app: &AppHandle, mut menus: MutexGuard<Vec<crate::Menu>>, config: Config) {
+    let global_shortcut = app.global_shortcut();
     global_shortcut.unregister_all()
         .expect("Could not unregister existing hotkeys");
 
@@ -138,6 +167,7 @@ fn generate_menus(app_handle: &AppHandle, mut menus: MutexGuard<Vec<crate::Menu>
                 match_selection_case: g.match_selection_case.unwrap_or(config.global.match_selection_case),
                 minimize_keys: g.minimize_keys.unwrap_or(config.global.minimize_keys),
                 remove_extension: g.remove_extension.unwrap_or(config.global.remove_extension),
+                custom_css: g.custom_css.clone().or_else(|| config.global.custom_css.clone()),
             },
             None => &config.global,
         };
@@ -191,28 +221,29 @@ fn generate_menus(app_handle: &AppHandle, mut menus: MutexGuard<Vec<crate::Menu>
             settings.match_selection_case,
             settings.minimize_keys,
             settings.remove_extension,
-            menu.command
+            menu.command,
+            settings.custom_css.clone()
         ));
 
-        app_handle.global_shortcut().register(shortcut)
+        app.global_shortcut().register(shortcut)
             .expect("Could not register shortcut");
     }
 }
 
-pub fn start_listening(app_handle: AppHandle) {
-    let config_dir = app_handle.path().config_dir()
+pub fn start_listening(app_handle: &AppHandle) {
+    let app = app_handle.clone();
+
+    let config_dir = app.path().config_dir()
         .expect("Could not get config directory")
         .join("quick-find/");
-
     let config_path = config_dir.join("config.json");
     
-    
     std::thread::spawn(move || {
-        let menus = app_handle.state::<Mutex<Vec<crate::Menu>>>();
+        let menus = app.state::<Mutex<Vec<crate::Menu>>>();
         let (tx, rx) = channel();
         
         if let Ok(config) = load(&config_dir) {
-            generate_menus(&app_handle, menus.lock().unwrap(), config);
+            generate_menus(&app, menus.lock().unwrap(), config);
         }
 
         let mut watcher: RecommendedWatcher =
@@ -231,7 +262,10 @@ pub fn start_listening(app_handle: AppHandle) {
                 Ok(_) => {
                     println!("Config file changed");
                     if let Ok(config) = load(&config_dir) {
-                        generate_menus(&app_handle, menus.lock().unwrap(), config);
+                        if *app.state::<Mutex<usize>>().lock().unwrap() != usize::MAX {
+                            menu::close(app.clone());
+                        }
+                        generate_menus(&app, menus.lock().unwrap(), config);
                     }
                 }
                 Err(e) => println!("Watch error: {:?}", e),

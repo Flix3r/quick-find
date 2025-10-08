@@ -13,10 +13,21 @@
       "properties": {
         "allowed_chars": { "type": "string", "default": "" },
         "match_allowed_chars_case": { "type": "boolean", "default": false },
-        "allowed_regex": { "type": "string", "default": "[a-z0-9]" },
+        "allowed_regex": { "type": "string", "default": "[A-z0-9]" },
         "match_selection_case": { "type": "boolean", "default": false },
         "minimize_keys": { "type": "boolean", "default": false },
-        "remove_extension": { "type": "boolean", "default": false }
+        "remove_extension": { "type": "boolean", "default": false },
+        "custom_css": { 
+          "type": "string", 
+          "default": "",
+          "description": "Custom CSS to apply to the window.",
+          "examples": [
+            "html { background-color: red; }",
+            ".entry { font-size: 20px; }",
+            ".current { color: blue; }",
+            ".pre, .post { color: gray; }"
+          ]
+        }
       }
     },
     "menus": {
