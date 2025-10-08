@@ -7,7 +7,6 @@ use std::{path::PathBuf, str::FromStr, sync::{Mutex, MutexGuard, mpsc::channel},
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use crate::entry::ActionType;
 
-
 #[derive(Debug, Deserialize)]
 pub struct Config {
     #[serde(default)]
@@ -29,6 +28,23 @@ pub struct Global {
     pub minimize_keys: bool,
     #[serde(default)]
     pub remove_extension: bool,
+}
+
+
+#[derive(Debug, Deserialize, Default)]
+pub struct GlobalOverrides {
+    #[serde(default)]
+    pub allowed_chars: Option<String>,
+    #[serde(default)]
+    pub match_allowed_chars_case: Option<bool>,
+    #[serde(default)]
+    pub allowed_regex: Option<String>,
+    #[serde(default)]
+    pub match_selection_case: Option<bool>,
+    #[serde(default)]
+    pub minimize_keys: Option<bool>,
+    #[serde(default)]
+    pub remove_extension: Option<bool>,
 }
 
 fn default_allowed_regex() -> String {
@@ -60,7 +76,7 @@ pub struct Menu {
     pub entries: Option<Vec<Entry>>,
     pub command: Option<String>,
     #[serde(rename = "global_overrides")]
-    pub global_overrides: Option<Global>,
+    pub global_overrides: Option<GlobalOverrides>,
 }
 
 pub fn ensure_exists(app: &tauri::App) {
@@ -115,7 +131,14 @@ fn generate_menus(app_handle: &AppHandle, mut menus: MutexGuard<Vec<crate::Menu>
         let shortcut = shortcut_opt.unwrap();
 
         let settings = match menu.global_overrides {
-            Some(ref g) => g,
+            Some(ref g) => &Global {
+                allowed_chars: g.allowed_chars.clone().unwrap_or_else(|| config.global.allowed_chars.clone()),
+                match_allowed_chars_case: g.match_allowed_chars_case.unwrap_or(config.global.match_allowed_chars_case),
+                allowed_regex: g.allowed_regex.clone().unwrap_or_else(|| config.global.allowed_regex.clone()),
+                match_selection_case: g.match_selection_case.unwrap_or(config.global.match_selection_case),
+                minimize_keys: g.minimize_keys.unwrap_or(config.global.minimize_keys),
+                remove_extension: g.remove_extension.unwrap_or(config.global.remove_extension),
+            },
             None => &config.global,
         };
 
@@ -129,7 +152,7 @@ fn generate_menus(app_handle: &AppHandle, mut menus: MutexGuard<Vec<crate::Menu>
                                 ActionType::Command(cmd.clone())
                             } else {
                                 println!("Entry and menu don't have commands, skipping this entry");
-                                return None; // skip this entry
+                                return None;
                             }
                         }
                     };
