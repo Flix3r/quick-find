@@ -14,7 +14,7 @@ pub struct Config {
     pub menus: Vec<Menu>,
 }
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize)]
 pub struct Global {
     #[serde(default)]
     pub allowed_chars: String,
@@ -30,12 +30,26 @@ pub struct Global {
     pub remove_extension: bool,
     #[serde(default)]
     pub custom_css: Option<String>,
-    #[serde(default)]
+    #[serde(default = "default_ignored_files")]
     pub ignored_files: Vec<String>,
 }
 
+impl Default for Global {
+    fn default() -> Self {
+        Global {
+            allowed_chars: String::new(),
+            match_allowed_chars_case: false,
+            allowed_regex: default_allowed_regex(),
+            match_selection_case: false,
+            minimize_keys: false,
+            remove_extension: false,
+            custom_css: None,
+            ignored_files: default_ignored_files(),
+        }
+    }
+}
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize)]
 pub struct GlobalOverrides {
     #[serde(default)]
     pub allowed_chars: Option<String>,
@@ -51,7 +65,7 @@ pub struct GlobalOverrides {
     pub remove_extension: Option<bool>,
     #[serde(default)]
     pub custom_css: Option<String>,
-    #[serde(default = "default_ignored_files")]
+    #[serde(default)]
     pub ignored_files: Vec<String>,
 }
 
@@ -150,7 +164,7 @@ fn load(config_dir: &PathBuf) -> Result<Config, serde_json::Error> {
 
     match &result {
         Ok(_) => println!("Config loaded"),
-        Err(_) => println!("Config invalid")
+        Err(e) => println!("Config invalid: {}", e)
     }
 
     result
@@ -180,9 +194,7 @@ fn generate_menus(app: &AppHandle, mut menus: MutexGuard<Vec<crate::Menu>>, conf
                 minimize_keys: g.minimize_keys.unwrap_or(config.global.minimize_keys),
                 remove_extension: g.remove_extension.unwrap_or(config.global.remove_extension),
                 custom_css: g.custom_css.clone().or_else(|| config.global.custom_css.clone()),
-                ignored_files: config.global.ignored_files
-                    .iter().chain(g.ignored_files.iter())
-                    .cloned().collect(),
+                ignored_files: [config.global.ignored_files.clone(), g.ignored_files.clone()].concat(),
             },
             None => &config.global,
         };

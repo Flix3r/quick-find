@@ -40,7 +40,7 @@
           "type": "array",
           "items": { "type": "string" },
           "default": [".DS_Store", "thumbs.db, desktop.ini"],
-          "description": "List of filenames to ignore in a directory."
+          "description": "List of filenames to ignore in a directory. Override lists are added with the global list."
         }
       }
     },
