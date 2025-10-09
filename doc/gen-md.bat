@@ -1,0 +1,1 @@
+python -m json_schema_for_humans.generate --template md .\doc\config.schema.json .\doc\config.md

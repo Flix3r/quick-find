@@ -141,7 +141,7 @@ pub fn ensure_exists(app: &AppHandle) {
         println!("Creating default config file");
         std::fs::write(&config_path, concat!(
             "{\n",  
-            "  \"$schema\": \"https://raw.githubusercontent.com/Flix3r/quick-find/refs/heads/main/src-tauri/config.schema.json\",\n",
+            "  \"$schema\": \"https://raw.githubusercontent.com/Flix3r/quick-find/refs/heads/main/doc/config.schema.json\",\n",
             "  \"menus\": [\n",
             "    {\n",
             "      \"hotkey\": \"Ctrl+Space\",\n",
