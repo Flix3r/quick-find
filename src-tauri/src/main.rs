@@ -79,6 +79,8 @@ fn main() {
         .setup(|app| {
             #[cfg(not(debug_assertions))]
             {
+                use tauri_plugin_autostart::ManagerExt;
+
                 app.handle().plugin(tauri_plugin_autostart::init(
                     tauri_plugin_autostart::MacosLauncher::LaunchAgent,
                     None
