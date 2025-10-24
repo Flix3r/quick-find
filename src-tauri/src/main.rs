@@ -106,8 +106,6 @@ fn main() {
 
             config::ensure_exists(app.handle());
             config::start_listening(app.handle());
-            
-            app.get_webview_window("main").unwrap().open_devtools();
 
             Ok(())
         })
