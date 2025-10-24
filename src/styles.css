@@ -32,6 +32,7 @@ body::-webkit-scrollbar {
 }
 
 #entries {
+  height: 100%;
   margin: 4px 8px;
   font-weight: lighter;
 }
