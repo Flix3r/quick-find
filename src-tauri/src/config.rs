@@ -1,15 +1,16 @@
+use crate::{entry::ActionType, menu};
+use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use regex::Regex;
 use serde::Deserialize;
+use std::{
+    path::PathBuf,
+    str::FromStr,
+    sync::{mpsc::channel, Mutex, MutexGuard},
+    time::Duration,
+};
 use tauri::{AppHandle, Manager};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 use tauri_plugin_opener::OpenerExt;
-use std::{
-    path::PathBuf, 
-    str::FromStr, sync::{Mutex, MutexGuard, mpsc::channel}, 
-    time::Duration
-};
-use notify::{RecommendedWatcher, RecursiveMode, Watcher};
-use crate::{entry::ActionType, menu};
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
@@ -79,9 +80,9 @@ fn default_allowed_regex() -> String {
 
 fn default_ignored_files() -> Vec<String> {
     vec![
-        ".DS_Store".to_string(), 
-        "thumbs.db".to_string(), 
-        "desktop.ini".to_string()
+        ".DS_Store".to_string(),
+        "thumbs.db".to_string(),
+        "desktop.ini".to_string(),
     ]
 }
 
@@ -96,10 +97,7 @@ pub enum Action {
 #[serde(untagged)]
 pub enum Entry {
     Simple(String),
-    WithCommand {
-        value: String,
-        command: String,
-    },
+    WithCommand { value: String, command: String },
 }
 
 #[derive(Debug, Deserialize)]
@@ -115,21 +113,26 @@ pub struct Menu {
 
 #[tauri::command]
 pub fn open_config(app: AppHandle) {
-    let path = app.path().config_dir()
+    let path = app
+        .path()
+        .config_dir()
         .expect("Could not get config directory")
         .join("quick-find")
         .join("config.json");
 
-    if app.opener().open_path(
-        path.to_string_lossy(), 
-        None::<&str>
-    ).is_err() {
+    if app
+        .opener()
+        .open_path(path.to_string_lossy(), None::<&str>)
+        .is_err()
+    {
         println!("Could not open config");
     }
 }
 
 pub fn ensure_exists(app: &AppHandle) {
-    let config_dir = app.path().config_dir()
+    let config_dir = app
+        .path()
+        .config_dir()
         .expect("Could not get config directory")
         .join("quick-find");
 
@@ -137,58 +140,57 @@ pub fn ensure_exists(app: &AppHandle) {
 
     if !config_dir.exists() {
         println!("Creating config directory");
-        std::fs::create_dir_all(&config_dir)
-            .expect("Could not create config directory");
+        std::fs::create_dir_all(&config_dir).expect("Could not create config directory");
     }
 
     if !config_path.exists() {
         println!("Creating default config file");
-        std::fs::write(&config_path, concat!(
-            "{\n",  
-            "  \"$schema\": \"https://raw.githubusercontent.com/Flix3r/",
-            "quick-find/refs/heads/main/doc/config.schema.json\",\n",
-            "  \"menus\": [\n",
-            "    {\n",
-            "      \"hotkey\": \"Ctrl+Space\",\n",
-            "      \"action\": \"open\",\n",
-            "      \"directory\": \"absolute/path/to/directory/\",\n",
-            "    }\n",
-            "  ]\n",
-            "}"
-        )).expect("Could not create default config file");
-        app.opener().open_path(config_path.to_string_lossy(), None::<&str>)
+        std::fs::write(
+            &config_path,
+            concat!(
+                "{\n",
+                "  \"$schema\": \"https://raw.githubusercontent.com/Flix3r/",
+                "quick-find/refs/heads/main/doc/config.schema.json\",\n",
+                "  \"menus\": [\n",
+                "    {\n",
+                "      \"hotkey\": \"Ctrl+Space\",\n",
+                "      \"action\": \"open\",\n",
+                "      \"directory\": \"absolute/path/to/directory/\",\n",
+                "    }\n",
+                "  ]\n",
+                "}"
+            ),
+        )
+        .expect("Could not create default config file");
+        app.opener()
+            .open_path(config_path.to_string_lossy(), None::<&str>)
             .expect("Could not open config");
     }
 }
 
-fn load(
-    app: &AppHandle, 
-    config_dir: &PathBuf
-) -> Result<Config, serde_json::Error> {
+fn load(app: &AppHandle, config_dir: &PathBuf) -> Result<Config, serde_json::Error> {
     let result = serde_json::from_str(
-        &std::fs::read_to_string(config_dir.join("config.json"))
-            .expect("Could not read config")
+        &std::fs::read_to_string(config_dir.join("config.json")).expect("Could not read config"),
     );
 
     match &result {
         Ok(_) => {
             println!("Config loaded");
-            app.get_window("main").expect("Could not get window")
-                .hide().expect("Could not hide window");
-        },
-        Err(e) => crate::error(app, format!("Config invalid: {}", e))
+            app.get_window("main")
+                .expect("Could not get window")
+                .hide()
+                .expect("Could not hide window");
+        }
+        Err(e) => crate::error(app, format!("Config invalid: {}", e)),
     }
 
     result
 }
 
-fn generate_menus(
-    app: &AppHandle,
-    mut menus: MutexGuard<Vec<crate::Menu>>, 
-    config: Config
-) {
+fn generate_menus(app: &AppHandle, mut menus: MutexGuard<Vec<crate::Menu>>, config: Config) {
     let global_shortcut = app.global_shortcut();
-    global_shortcut.unregister_all()
+    global_shortcut
+        .unregister_all()
         .expect("Could not unregister existing hotkeys");
 
     menus.clear();
@@ -196,40 +198,50 @@ fn generate_menus(
     for menu in config.menus {
         let shortcut_opt = Shortcut::from_str(menu.hotkey.as_str());
         if shortcut_opt.is_err() {
-            crate::error(app, format!(
-                "Shortcut {} could not be parsed, the menu will be skipped", 
-                menu.hotkey
-            ));
+            crate::error(
+                app,
+                format!(
+                    "Shortcut {} could not be parsed, the menu will be skipped",
+                    menu.hotkey
+                ),
+            );
             continue;
         };
         let shortcut = shortcut_opt.unwrap();
 
         let settings = match menu.global_overrides {
             Some(ref g) => &Global {
-                allowed_chars: g.allowed_chars.clone()
+                allowed_chars: g
+                    .allowed_chars
+                    .clone()
                     .unwrap_or_else(|| config.global.allowed_chars.clone()),
-                match_allowed_chars_case: g.match_allowed_chars_case
+                match_allowed_chars_case: g
+                    .match_allowed_chars_case
                     .unwrap_or(config.global.match_allowed_chars_case),
-                allowed_regex: g.allowed_regex.clone()
+                allowed_regex: g
+                    .allowed_regex
+                    .clone()
                     .unwrap_or_else(|| config.global.allowed_regex.clone()),
-                match_selection_case: g.match_selection_case
+                match_selection_case: g
+                    .match_selection_case
                     .unwrap_or(config.global.match_selection_case),
-                minimize_keys: g.minimize_keys
-                    .unwrap_or(config.global.minimize_keys),
-                remove_extension: g.remove_extension
-                    .unwrap_or(config.global.remove_extension),
-                custom_css: g.custom_css.clone()
+                minimize_keys: g.minimize_keys.unwrap_or(config.global.minimize_keys),
+                remove_extension: g.remove_extension.unwrap_or(config.global.remove_extension),
+                custom_css: g
+                    .custom_css
+                    .clone()
                     .or_else(|| config.global.custom_css.clone()),
-                ignored_files: [
-                    config.global.ignored_files.clone(), 
-                    g.ignored_files.clone()
-                ].concat(),
+                ignored_files: [config.global.ignored_files.clone(), g.ignored_files.clone()]
+                    .concat(),
             },
             None => &config.global,
         };
 
-        let entries = menu.entries.unwrap_or_default()
-            .iter().filter_map(|x| match x {
+        let entries = menu
+            .entries
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|x| match x {
                 Entry::Simple(string) => {
                     let action_type = match menu.action {
                         Action::Open => ActionType::Open,
@@ -237,50 +249,69 @@ fn generate_menus(
                             if let Some(cmd) = &menu.command {
                                 ActionType::Command(cmd.clone())
                             } else {
-                                crate::error(app, format!(concat!(
-                                    "Entry and menu don't have commands, ",
-                                    "skipping: {}"
-                                ), string));
+                                crate::error(
+                                    app,
+                                    format!(
+                                        concat!(
+                                            "Entry and menu don't have commands, ",
+                                            "skipping: {}"
+                                        ),
+                                        string
+                                    ),
+                                );
                                 return None;
                             }
                         }
                     };
                     Some(crate::entry::Entry::new(
-                        string.clone(), 
-                        string.clone(), 
-                        action_type
+                        string.clone(),
+                        string.clone(),
+                        action_type,
                     ))
-                },
+                }
                 Entry::WithCommand { value, command } => {
                     let action_type = match menu.action {
                         Action::Open => {
-                            crate::error(app, format!(concat!(
-                                "Action is \"open\", ",
-                                "yet the entry has a command, skipping: {}"
-                            ), value));
+                            crate::error(
+                                app,
+                                format!(
+                                    concat!(
+                                        "Action is \"open\", ",
+                                        "yet the entry has a command, skipping: {}"
+                                    ),
+                                    value
+                                ),
+                            );
                             return None;
-                        },
-                        Action::Command => ActionType::Command(command.clone())
+                        }
+                        Action::Command => ActionType::Command(command.clone()),
                     };
                     Some(crate::entry::Entry::new(
-                        value.clone(), 
-                        value.clone(), action_type
+                        value.clone(),
+                        value.clone(),
+                        action_type,
                     ))
                 }
-            }).collect();
+            })
+            .collect();
 
         let regex: Option<Regex>;
         if !settings.allowed_regex.is_empty() {
             let regex_res = Regex::new(settings.allowed_regex.as_str());
             if regex_res.is_err() {
-                crate::error(app, format!(
-                    "Regex {} could not be parsed, the menu will be skipped", 
-                    settings.allowed_regex
-                ));
+                crate::error(
+                    app,
+                    format!(
+                        "Regex {} could not be parsed, the menu will be skipped",
+                        settings.allowed_regex
+                    ),
+                );
                 continue;
             }
             regex = Some(regex_res.unwrap());
-        } else { regex = None; }
+        } else {
+            regex = None;
+        }
 
         menus.push(crate::menu::Menu::new(
             shortcut,
@@ -295,10 +326,11 @@ fn generate_menus(
             settings.remove_extension,
             menu.command,
             settings.custom_css.clone(),
-            settings.ignored_files.clone()
+            settings.ignored_files.clone(),
         ));
 
-        app.global_shortcut().register(shortcut)
+        app.global_shortcut()
+            .register(shortcut)
             .expect("Could not register shortcut");
     }
 }
@@ -306,25 +338,26 @@ fn generate_menus(
 pub fn start_listening(app_handle: &AppHandle) {
     let app = app_handle.clone();
 
-    let config_dir = app.path().config_dir()
+    let config_dir = app
+        .path()
+        .config_dir()
         .expect("Could not get config directory")
         .join("quick-find/");
     let config_path = config_dir.join("config.json");
-    
+
     std::thread::spawn(move || {
         let menus = app.state::<Mutex<Vec<crate::Menu>>>();
         let (tx, rx) = channel();
-        
+
         if let Ok(config) = load(&app, &config_dir) {
             generate_menus(&app, menus.lock().unwrap(), config);
         }
 
-        let mut watcher: RecommendedWatcher =
-            Watcher::new(
-                tx, 
-                notify::Config::default()
-                    .with_poll_interval(Duration::from_secs(2))
-            ).expect("failed to create watcher");
+        let mut watcher: RecommendedWatcher = Watcher::new(
+            tx,
+            notify::Config::default().with_poll_interval(Duration::from_secs(2)),
+        )
+        .expect("failed to create watcher");
 
         watcher
             .watch(config_path.as_path(), RecursiveMode::NonRecursive)
@@ -335,10 +368,7 @@ pub fn start_listening(app_handle: &AppHandle) {
                 Ok(_) => {
                     println!("Config file changed");
                     if let Ok(config) = load(&app, &config_dir) {
-                        if 
-                            *app.state::<Mutex<usize>>().lock().unwrap() 
-                            != usize::MAX 
-                        {
+                        if *app.state::<Mutex<usize>>().lock().unwrap() != usize::MAX {
                             menu::close(app.clone());
                         }
                         generate_menus(&app, menus.lock().unwrap(), config);
