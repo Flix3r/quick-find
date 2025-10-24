@@ -8,6 +8,7 @@
     }
   },
   "properties": {
+    "autostart": { "type": "boolean", "default": true },
     "global": {
       "type": "object",
       "properties": {

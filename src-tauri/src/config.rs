@@ -14,8 +14,13 @@ use tauri_plugin_opener::OpenerExt;
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
+    #[serde(default = "default_true")]
+    #[cfg_attr(debug_assertions, allow(unused))]
+    pub autostart: bool,
+
     #[serde(default)]
     pub global: Global,
+
     pub menus: Vec<Menu>,
 }
 
@@ -72,6 +77,10 @@ pub struct GlobalOverrides {
     pub custom_css: Option<String>,
     #[serde(default)]
     pub ignored_files: Vec<String>,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 fn default_allowed_regex() -> String {
@@ -169,17 +178,28 @@ pub fn ensure_exists(app: &AppHandle) {
 }
 
 fn load(app: &AppHandle, config_dir: &PathBuf) -> Result<Config, serde_json::Error> {
-    let result = serde_json::from_str(
+    let result = serde_json::from_str::<Config>(
         &std::fs::read_to_string(config_dir.join("config.json")).expect("Could not read config"),
     );
 
     match &result {
-        Ok(_) => {
+        Ok(_res) => {
             println!("Config loaded");
             app.get_window("main")
                 .expect("Could not get window")
                 .hide()
                 .expect("Could not hide window");
+
+            #[cfg(not(debug_assertions))]
+            {
+                use tauri_plugin_autostart::ManagerExt;
+
+                if _res.autostart {
+                    app.autolaunch().enable().expect("Could not enable autostart");
+                } else {
+                    app.autolaunch().disable().expect("Could not disable autostart");
+                }
+            }
         }
         Err(e) => crate::error(app, format!("Config invalid: {}", e)),
     }
