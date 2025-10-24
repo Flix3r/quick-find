@@ -77,6 +77,16 @@ fn main() {
         .plugin(tauri_plugin_autostart::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
+            #[cfg(not(debug_assertions))]
+            {
+                app.handle().plugin(tauri_plugin_autostart::init(
+                    tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+                    None
+                )).expect("Could not initialize autostart plugin");
+
+                app.autolaunch().enable().expect("Could not enable autostart");
+            }
+            
             TrayIconBuilder::new()
                 .icon(app.default_window_icon().unwrap().clone())
                 .menu(&ContextMenu::with_items(
