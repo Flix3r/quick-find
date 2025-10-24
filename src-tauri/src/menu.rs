@@ -56,15 +56,17 @@ impl Menu {
         }
     }
 
-    pub fn get_entries(&mut self) {
+    pub fn get_entries(&mut self, app: &AppHandle) {
         self.current_entries = match &self.directory {
             Some(dir) => {
                 match read_dir(&dir) {
                     Ok(dir) => dir
                         .filter_map(|res| res.ok())
                         .filter_map(|entry| {
-                            let mut name = entry.file_name().to_string_lossy().into_owned();
-                            let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
+                            let mut name = entry.file_name()
+                                .to_string_lossy().into_owned();
+                            let is_dir = entry.file_type().map(|t| t.is_dir())
+                                .unwrap_or(false);
 
                             if is_dir {
                                 name.push('/');
@@ -80,15 +82,27 @@ impl Menu {
                                     .unwrap_or(&name).to_string();
                             }
 
-                            let full = entry.path().to_string_lossy().into_owned();
+                            let full = entry.path()
+                                .to_string_lossy().into_owned();
 
                             match &self.action {
-                                Action::Open => Some(Entry::new(name, full, ActionType::Open)),
-                                Action::Command => Some(Entry::new(name, full, ActionType::Command(self.command.clone().unwrap())))
+                                Action::Open => Some(
+                                    Entry::new(name, full, ActionType::Open)
+                                ),
+                                Action::Command => Some(Entry::new(
+                                    name, 
+                                    full, 
+                                    ActionType::Command(
+                                        self.command.clone().unwrap()
+                                    )
+                                ))
                             }
                         }).collect(),
                     Err(_) => {
-                        println!("Could not read directory {}", dir);
+                        crate::error(
+                            app,
+                            format!("Could not read directory: {}", dir)
+                        );
                         Vec::new()
                     }
                 }
@@ -114,7 +128,10 @@ impl Menu {
                 let mut used_chars = String::from("");
 
                 for entry in &mut self.current_entries {
-                    let disallowed_chars = [unproductive_chars.as_str(), used_chars.as_str()].concat();
+                    let disallowed_chars = [
+                        unproductive_chars.as_str(), 
+                        used_chars.as_str()
+                        ].concat();
                     
                     if entry.get_selection(
                         &self.allowed_chars,
@@ -122,10 +139,18 @@ impl Menu {
                         &disallowed_chars,
                         self.match_allowed_chars_case,
                         self.match_selection_case
-                    ) { used_chars.push(if self.match_selection_case { entry.selection_letter } else { 
-                        entry.selection_letter.to_lowercase().next()
-                            .expect("Could not convert selection letter to lowercase") 
-                    }) } else {
+                    ) { 
+                        used_chars.push(
+                            if self.match_selection_case { 
+                                entry.selection_letter 
+                            } else { 
+                                entry.selection_letter.to_lowercase().next()
+                                .expect(concat!(
+                                    "Could not convert selection letter ",
+                                    "to lowercase"
+                                ))
+                        })
+                    } else {
                         entry.get_selection(
                             &self.allowed_chars,
                             &self.allowed_regex,
@@ -137,11 +162,14 @@ impl Menu {
                 };
 
                 let not_same = self.current_entries.iter().any(|x| {
-                    x.selection_letter != self.current_entries[0].selection_letter
+                    x.selection_letter != 
+                    self.current_entries[0].selection_letter
                 });
 
                 if !not_same {
-                    unproductive_chars.push(self.current_entries[0].selection_letter);
+                    unproductive_chars.push(
+                        self.current_entries[0].selection_letter
+                    );
                     println!(concat!(
                         "All entries attempted to use the same letter. ", 
                         "Unproductive chars are now \"{}\""

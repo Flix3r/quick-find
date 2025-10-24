@@ -13,7 +13,17 @@ pub enum ActionType {
 impl ActionType {
     pub fn activate(&self, app_handle: &AppHandle, string: &str) {
         match self {
-            ActionType::Open => app_handle.opener().open_path(string, None::<&str>).expect("Could not open entry"),
+            ActionType::Open => {
+                let result = app_handle.opener()
+                    .open_path(string, None::<&str>);
+
+                if result.is_err() {
+                    crate::error(
+                        app_handle,
+                        format!("Could not open file: {}", string)
+                    );
+                }
+            }
             ActionType::Command(cmd) => {
                 #[cfg(target_os = "windows")]
                 let _output = Command::new("cmd")
@@ -80,7 +90,10 @@ impl Entry {
                     if !allowed_chars.contains(c) { continue }
                 } else {
                     if !allowed_chars.contains(c.to_lowercase().next()
-                        .expect("Could not convert allowed character to lowercase")) 
+                        .expect(
+                            "Could not convert allowed character to lowercase"
+                        )
+                    ) 
                     { continue }
                 }
             }
@@ -93,7 +106,10 @@ impl Entry {
                 if disallowed_chars.contains(c) { continue }
             } else {
                 if disallowed_chars.contains(c.to_lowercase().next()
-                    .expect("Could not convert disallowed character to lowercase")) 
+                    .expect(
+                        "Could not convert disallowed character to lowercase"
+                    )
+                ) 
                 { continue }
             }
 

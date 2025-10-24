@@ -13,6 +13,8 @@ type Entry = {
 }
 
 listen('opened', (event) => {
+    document.getElementById('error')!.style.display = "none";
+
     let entries = event.payload as Entry[];
     let entriesElement = document.getElementById("entries")!;
     entriesElement.innerHTML = "";
@@ -59,7 +61,8 @@ listen('opened', (event) => {
             ) {
                 end = entry.string.length;
             }
-            postText.innerText = entry.string.slice(entry.selection_index + 1, end) 
+            postText.innerText = entry.string
+                .slice(entry.selection_index + 1, end)
                 + (end < entry.string.length ? entryClipText : "");
             entryDiv.appendChild(postText);
         }
@@ -70,6 +73,13 @@ listen('opened', (event) => {
 
 listen('custom-css', (event) => {
     document.getElementById('custom-css')!.innerHTML = event.payload as string;
+});
+
+listen('error', (event) => {
+    document.getElementById('entries')!.innerHTML = "";
+
+    document.getElementById('error')!.style.display = "";
+    document.getElementById('error-text')!.innerText = event.payload as string;
 });
 
 window.addEventListener("keydown", (event) => {
