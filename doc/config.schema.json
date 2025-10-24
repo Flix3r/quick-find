@@ -8,7 +8,7 @@
     }
   },
   "properties": {
-    "autostart": { "type": "boolean", "default": true },
+    "autostart": { "type": "boolean" },
     "global": {
       "type": "object",
       "properties": {
@@ -115,5 +115,5 @@
       "minItems": 1
     }
   },
-  "required": ["menus"]
+  "required": ["autostart", "menus"]
 }

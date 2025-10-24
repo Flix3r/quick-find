@@ -14,7 +14,6 @@ use tauri_plugin_opener::OpenerExt;
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
-    #[serde(default = "default_true")]
     #[cfg_attr(debug_assertions, allow(unused))]
     pub autostart: bool,
 
@@ -77,10 +76,6 @@ pub struct GlobalOverrides {
     pub custom_css: Option<String>,
     #[serde(default)]
     pub ignored_files: Vec<String>,
-}
-
-fn default_true() -> bool {
-    true
 }
 
 fn default_allowed_regex() -> String {
