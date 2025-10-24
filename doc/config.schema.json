@@ -4,7 +4,12 @@
   "type": "object",
   "definitions": {
     "commandString": {
-      "type": "string"
+      "type": "string",
+      "description": "The command to execute the entry with. Use {} as the placeholder for the selection.",
+      "examples": [
+        "notepad {}",
+        "notify-send \"Entry Selected\" \\\"{}\\\""
+      ]
     }
   },
   "properties": {
